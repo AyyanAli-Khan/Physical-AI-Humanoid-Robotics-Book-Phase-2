@@ -1,0 +1,120 @@
+# API Contract: OpenRouter RAG Backend
+
+## Chat API
+
+### POST /chat/message
+Initiates or continues a chat conversation with the RAG agent.
+
+**Request**:
+```json
+{
+  "message": "What does the documentation say about installation?",
+  "session_id": "optional-session-id",
+  "model": "google/gemini-2.0-flash-exp:free"
+}
+```
+
+**Response**:
+```json
+{
+  "response": "The documentation provides detailed installation instructions...",
+  "session_id": "new-or-existing-session-id",
+  "sources": [
+    {
+      "title": "Installation Guide",
+      "url": "/docs/installation",
+      "confidence": 0.95
+    }
+  ],
+  "timestamp": "2025-12-17T10:30:00Z"
+}
+```
+
+**Errors**:
+- 400: Invalid request format
+- 429: Rate limit exceeded
+- 500: Internal server error or OpenRouter API unavailable
+
+### POST /chat/session/start
+Starts a new chat session.
+
+**Request**:
+```json
+{
+  "initial_message": "Hello, I need help with the documentation",
+  "model": "google/gemini-2.0-flash-exp:free"
+}
+```
+
+**Response**:
+```json
+{
+  "session_id": "new-session-id",
+  "response": "Hello! I'm here to help you with the documentation. What would you like to know?",
+  "timestamp": "2025-12-17T10:30:00Z"
+}
+```
+
+### GET /chat/session/{session_id}
+Retrieves the history of a chat session.
+
+**Response**:
+```json
+{
+  "session_id": "session-id",
+  "messages": [
+    {
+      "role": "user",
+      "content": "How do I install the system?",
+      "timestamp": "2025-12-17T10:25:00Z"
+    },
+    {
+      "role": "assistant",
+      "content": "The documentation provides detailed installation instructions...",
+      "sources": [
+        {
+          "title": "Installation Guide",
+          "url": "/docs/installation"
+        }
+      ],
+      "timestamp": "2025-12-17T10:25:30Z"
+    }
+  ]
+}
+```
+
+## Ingestion API
+
+### POST /ingestion/trigger
+Triggers the documentation ingestion process.
+
+**Request**:
+```json
+{
+  "source_path": "/book/docs",
+  "collection_name": "docusaurus_docs"
+}
+```
+
+**Response**:
+```json
+{
+  "status": "started",
+  "job_id": "ingestion-job-123",
+  "estimated_duration": "300s"
+}
+```
+
+### GET /ingestion/status/{job_id}
+Checks the status of an ingestion job.
+
+**Response**:
+```json
+{
+  "job_id": "ingestion-job-123",
+  "status": "completed",
+  "processed_files": 45,
+  "chunks_created": 120,
+  "timestamp": "2025-12-17T10:35:00Z"
+}
+```

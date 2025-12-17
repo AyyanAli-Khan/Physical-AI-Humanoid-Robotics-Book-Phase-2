@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "SlashCommand(/sp.constitution)",
+      "Bash(git fetch --all --prune)",
+      "Bash(pwsh -Command \".specify/scripts/powershell/setup-plan.ps1 -Json\")",
+      "Bash(powershell -Command \".specify/scripts/powershell/setup-plan.ps1 -Json\")",
+      "Bash(powershell -Command \".specify/scripts/powershell/update-agent-context.ps1 -AgentType claude\")",
+      "Bash(powershell -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json\")",
+      "Bash(powershell -Command \".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks\")",
+      "Bash(git rev-parse --git-dir)",
+      "Bash(node --version)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_snapshot",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "Bash(npx create-docusaurus@latest book classic)",
+      "Bash(npx create-docusaurus@latest book classic --typescript false)",
+      "Bash(mkdir -p \"book/docs/physical-ai/part-1-foundations\" \"book/docs/physical-ai/part-2-simulation\" \"book/docs/physical-ai/part-3-humanoid\" \"book/docs/physical-ai/part-4-vla\" \"book/docs/physical-ai/appendices\")",
+      "Bash(mkdir -p book/docs/physical-ai/part-1-foundations/)",
+      "Bash(mkdir -p book/docs/physical-ai/part-2-simulation/)",
+      "Bash(mkdir -p book/docs/physical-ai/part-3-humanoid/)",
+      "Bash(mkdir -p book/docs/physical-ai/part-4-vla/)",
+      "Bash(mkdir -p book/docs/physical-ai/appendices/)",
+      "Bash(npm run build)",
+      "SlashCommand(/sp.clarify)",
+      "Bash(.specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly)",
+      "Bash(.specify/scripts/powershell/setup-plan.ps1 -Json)",
+      "Bash(.specify/scripts/powershell/check-prerequisites.ps1 -Json)",
+      "mcp__playwright__browser_run_code",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "Bash(git checkout -b 1-openrouter-rag-backend)",
+      "SlashCommand(/sp.phr)"
+    ]
+  }
+}

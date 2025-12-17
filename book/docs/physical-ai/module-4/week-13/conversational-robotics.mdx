@@ -1,0 +1,516 @@
+---
+title: 'Week 13: Conversational Robotics'
+description: 'Natural language interfaces and multimodal interaction for humanoid robots'
+sidebar_label: 'Week 13: Conversational Robotics'
+sidebar_position: 13
+---
+
+# Week 13: Conversational Robotics
+
+## Learning Objectives
+- Implement natural language processing for robot interaction
+- Integrate speech recognition and text-to-speech systems
+- Design multimodal interaction combining speech, gestures, and vision
+- Develop dialogue management systems for robot conversation
+- Create context-aware conversational agents
+- Understand the challenges of real-time conversational robotics
+
+## Introduction
+Conversational robotics represents the integration of natural language processing, speech recognition, dialogue management, and multimodal interaction to create robots that can communicate with humans using natural language. For humanoid robots, conversational capabilities are essential for human-like interaction, making them more approachable and useful in social contexts.
+
+Modern conversational robotics leverages advances in large language models (LLMs), speech recognition, and multimodal AI to create sophisticated interaction systems. This module explores the technical challenges and implementation approaches for creating robots that can engage in natural conversations.
+
+## Architecture of Conversational Systems
+
+### Speech Processing Pipeline
+Conversational robots typically implement a multi-stage pipeline:
+1. **Speech Recognition**: Converting speech to text
+2. **Natural Language Understanding (NLU)**: Understanding user intent
+3. **Dialogue Management**: Managing conversation flow
+4. **Natural Language Generation (NLG)**: Generating appropriate responses
+5. **Speech Synthesis**: Converting text to speech
+6. **Multimodal Integration**: Coordinating with gestures and actions
+
+### System Components
+- **Automatic Speech Recognition (ASR)**: Real-time speech-to-text conversion
+- **Natural Language Processing (NLP)**: Understanding and generating language
+- **Dialogue Manager**: Maintaining conversation context and state
+- **Text-to-Speech (TTS)**: Converting responses to natural speech
+- **Emotion Recognition**: Understanding user emotional state
+- **Gesture Integration**: Coordinating speech with physical expressions
+
+## Speech Recognition and Synthesis
+
+### Speech Recognition
+Modern ASR systems for robotics include:
+- **Offline models**: Fast, private recognition without internet
+- **Online services**: High accuracy using cloud-based models (Google, Azure, AWS)
+- **Custom models**: Tailored for specific domains or vocabularies
+- **Real-time processing**: Low-latency recognition for natural interaction
+
+### Implementation Example
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+from audio_common_msgs.msg import AudioData
+import speech_recognition as sr
+import threading
+
+class SpeechRecognitionNode(Node):
+    def __init__(self):
+        super().__init__('speech_recognition_node')
+
+        # Publisher for recognized text
+        self.text_pub = self.create_publisher(String, 'recognized_text', 10)
+
+        # Initialize speech recognizer
+        self.recognizer = sr.Recognizer()
+        self.microphone = sr.Microphone()
+
+        # Adjust for ambient noise
+        with self.microphone as source:
+            self.recognizer.adjust_for_ambient_noise(source)
+
+        # Start listening thread
+        self.listening = True
+        self.listen_thread = threading.Thread(target=self.listen_continuously)
+        self.listen_thread.start()
+
+    def listen_continuously(self):
+        while self.listening:
+            try:
+                with self.microphone as source:
+                    self.get_logger().info("Listening...")
+                    audio = self.recognizer.listen(source, timeout=5.0)
+
+                # Use Google Web Speech API (offline alternatives available)
+                text = self.recognizer.recognize_google(audio)
+
+                # Publish recognized text
+                msg = String()
+                msg.data = text
+                self.text_pub.publish(msg)
+                self.get_logger().info(f"Recognized: {text}")
+
+            except sr.WaitTimeoutError:
+                pass  # Continue listening
+            except sr.UnknownValueError:
+                self.get_logger().info("Could not understand audio")
+            except sr.RequestError as e:
+                self.get_logger().error(f"Speech recognition error: {e}")
+
+    def destroy_node(self):
+        self.listening = False
+        if self.listen_thread.is_alive():
+            self.listen_thread.join()
+        super().destroy_node()
+```
+
+### Text-to-Speech Systems
+TTS systems for robotics need to be responsive and natural:
+- **Offline TTS**: Fast, private synthesis (e.g., Festival, eSpeak, Mimic)
+- **Online TTS**: High-quality synthesis (Google TTS, Amazon Polly, Azure TTS)
+- **Custom voices**: Personalized robot voices
+- **Emotional TTS**: Expressive speech with emotional cues
+
+## Natural Language Processing
+
+### Intent Recognition
+Understanding user intent is crucial for conversational robots:
+- **Rule-based systems**: Hand-crafted rules for specific domains
+- **Machine learning**: Classification models for intent recognition
+- **Deep learning**: Neural networks for complex understanding
+- **Pre-trained models**: Leveraging models like BERT, GPT for understanding
+
+### Context Management
+Maintaining conversation context:
+- **Dialogue state tracking**: Remembering conversation history
+- **Coreference resolution**: Understanding pronouns and references
+- **Context switching**: Handling topic changes gracefully
+- **Memory systems**: Storing and retrieving relevant information
+
+### ROS 2 Integration
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+from geometry_msgs.msg import Twist
+from builtin_interfaces.msg import Time
+import openai
+import json
+
+class DialogueManagerNode(Node):
+    def __init__(self):
+        super().__init__('dialogue_manager')
+
+        # Subscribers
+        self.text_sub = self.create_subscription(
+            String, 'recognized_text', self.text_callback, 10)
+
+        # Publishers
+        self.response_pub = self.create_publisher(String, 'robot_response', 10)
+        self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', 10)
+
+        # Initialize conversation history
+        self.conversation_history = []
+
+        # OpenAI API key (should be configured securely)
+        openai.api_key = "your-api-key-here"
+
+    def text_callback(self, msg):
+        user_input = msg.data
+        self.get_logger().info(f"User said: {user_input}")
+
+        # Add to conversation history
+        self.conversation_history.append({"role": "user", "content": user_input})
+
+        # Generate response using LLM
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=self.conversation_history,
+                max_tokens=150
+            )
+
+            bot_response = response.choices[0].message.content
+
+            # Add to conversation history
+            self.conversation_history.append({"role": "assistant", "content": bot_response})
+
+            # Publish response
+            response_msg = String()
+            response_msg.data = bot_response
+            self.response_pub.publish(response_msg)
+
+            # Process commands if present in response
+            self.process_commands(bot_response)
+
+        except Exception as e:
+            self.get_logger().error(f"Error generating response: {e}")
+            error_msg = String()
+            error_msg.data = "Sorry, I encountered an error processing your request."
+            self.response_pub.publish(error_msg)
+
+    def process_commands(self, response):
+        # Simple command extraction (can be enhanced with NLP)
+        if "move forward" in response.lower():
+            cmd = Twist()
+            cmd.linear.x = 0.5
+            self.cmd_vel_pub.publish(cmd)
+        elif "turn left" in response.lower():
+            cmd = Twist()
+            cmd.angular.z = 0.5
+            self.cmd_vel_pub.publish(cmd)
+        # Add more command processing as needed
+```
+
+## Multimodal Interaction
+
+### Visual Context Integration
+Combining vision with conversation:
+- **Object recognition**: Identifying objects mentioned in conversation
+- **Gaze tracking**: Looking at objects during conversation
+- **Gesture recognition**: Understanding human gestures
+- **Scene understanding**: Contextual awareness of environment
+
+### Gesture and Expression
+Humanoid robots can enhance conversations with:
+- **Gestures**: Hand and body movements to support speech
+- **Facial expressions**: Displaying emotions and attention
+- **Posture**: Conveying confidence, attention, or friendliness
+- **Synchrony**: Coordinating gestures with speech
+
+### Example: Vision-Guided Conversation
+```python
+import rclpy
+from rclpy.node import Node
+from sensor_msgs.msg import Image
+from std_msgs.msg import String
+from cv_bridge import CvBridge
+import cv2
+import numpy as np
+
+class VisionGuidedConversationNode(Node):
+    def __init__(self):
+        super().__init__('vision_guided_conversation')
+
+        # Subscribers
+        self.image_sub = self.create_subscription(
+            Image, 'camera/image_raw', self.image_callback, 10)
+        self.conversation_sub = self.create_subscription(
+            String, 'robot_response', self.conversation_callback, 10)
+
+        # Publishers
+        self.annotated_image_pub = self.create_publisher(
+            Image, 'annotated_image', 10)
+
+        self.bridge = CvBridge()
+        self.current_objects = []
+
+    def image_callback(self, msg):
+        # Convert ROS image to OpenCV
+        cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+        # Perform object detection (simplified example)
+        # In practice, use YOLO, Detectron2, or similar
+        objects = self.detect_objects(cv_image)
+        self.current_objects = objects
+
+        # Annotate image with detected objects
+        annotated_image = self.annotate_image(cv_image, objects)
+
+        # Publish annotated image
+        annotated_msg = self.bridge.cv2_to_imgmsg(annotated_image, encoding='bgr8')
+        self.annotated_image_pub.publish(annotated_msg)
+
+    def detect_objects(self, image):
+        # Simplified object detection (replace with actual model)
+        # This is a placeholder for actual object detection logic
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # ... actual detection logic here
+        return []  # Return detected objects
+
+    def annotate_image(self, image, objects):
+        # Annotate image with bounding boxes and labels
+        annotated = image.copy()
+        for obj in objects:
+            # Draw bounding box and label
+            cv2.rectangle(annotated, obj['bbox'][0], obj['bbox'][1], (0, 255, 0), 2)
+            cv2.putText(annotated, obj['label'], obj['bbox'][0],
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        return annotated
+
+    def conversation_callback(self, msg):
+        # Process conversation in context of visual scene
+        response = msg.data
+        if "that" in response.lower() or "there" in response.lower():
+            # Reference objects in current visual scene
+            if self.current_objects:
+                object_names = [obj['label'] for obj in self.current_objects]
+                self.get_logger().info(f"Referencing objects: {object_names}")
+```
+
+## Dialogue Management
+
+### State Management
+Managing conversation state and context:
+- **Finite State Machines**: Simple conversation flows
+- **Dialogue Acts**: Structured representation of utterances
+- **Memory Networks**: Storing and retrieving conversation history
+- **Knowledge Graphs**: Representing world knowledge
+
+### Turn-Taking and Timing
+Natural conversation requires proper timing:
+- **Back-channel signals**: Acknowledging user speech
+- **Pause detection**: Recognizing when user finishes speaking
+- **Overlap handling**: Managing simultaneous speech
+- **Response timing**: Natural response delays
+
+### Error Handling
+Robust conversational systems handle errors gracefully:
+- **Recognition errors**: Handling misunderstood input
+- **Clarification requests**: Asking for clarification when uncertain
+- **Recovery strategies**: Getting back on track after errors
+- **Fallback mechanisms**: Default responses for unknown inputs
+
+## Large Language Model Integration
+
+### LLM Selection
+Choosing appropriate LLMs for robotics:
+- **Cloud-based models**: High quality, requires connectivity
+- **Edge models**: Privacy-preserving, limited by hardware
+- **Custom models**: Optimized for specific domains
+- **Open-source models**: Flexibility with self-hosting
+
+### Prompt Engineering
+Designing effective prompts for robotics:
+- **Context provision**: Providing relevant context to LLMs
+- **Role specification**: Defining robot's role and personality
+- **Constraint specification**: Limiting responses to safe/ethical bounds
+- **Multi-modal prompts**: Incorporating visual and sensor data
+
+### Safety and Ethics
+Conversational robots must be safe and ethical:
+- **Content filtering**: Preventing harmful responses
+- **Privacy protection**: Handling personal information appropriately
+- **Bias mitigation**: Reducing discriminatory responses
+- **Transparency**: Making robot nature clear to users
+
+## Practical Implementation
+
+### Creating a Conversational Robot Package
+```bash
+# Create conversational robotics package
+ros2 pkg create --build-type ament_python conversational_robot --dependencies \
+  rclpy std_msgs sensor_msgs geometry_msgs audio_common_msgs \
+  cv_bridge vision_msgs
+```
+
+### Configuration Files
+Create `config/conversational_robot.yaml`:
+```yaml
+conversational_robot:
+  ros__parameters:
+    speech_recognition:
+      engine: "google"  # google, offline, or custom
+      language: "en-US"
+      sensitivity: 0.5
+    text_to_speech:
+      engine: "espeak"  # espeak, google, or custom
+      voice: "en+f3"
+      rate: 150
+    dialogue_management:
+      model: "gpt-3.5-turbo"  # or local model
+      max_context_length: 1000
+      response_timeout: 10.0
+    multimodal:
+      camera_topic: "/camera/image_raw"
+      enable_gesture: true
+      enable_gaze: true
+```
+
+### Main Launch File
+Create `launch/conversational_robot.launch.py`:
+```python
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    # Launch arguments
+    use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='false',
+        description='Use simulation time if true'
+    )
+
+    # Speech recognition node
+    speech_recognition_node = Node(
+        package='conversational_robot',
+        executable='speech_recognition_node',
+        name='speech_recognition',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        output='screen'
+    )
+
+    # Dialogue manager node
+    dialogue_manager_node = Node(
+        package='conversational_robot',
+        executable='dialogue_manager_node',
+        name='dialogue_manager',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        output='screen'
+    )
+
+    # Text-to-speech node
+    tts_node = Node(
+        package='conversational_robot',
+        executable='tts_node',
+        name='text_to_speech',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        output='screen'
+    )
+
+    # Vision-guided conversation node
+    vision_node = Node(
+        package='conversational_robot',
+        executable='vision_guided_conversation_node',
+        name='vision_conversation',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        output='screen'
+    )
+
+    return LaunchDescription([
+        use_sim_time,
+        speech_recognition_node,
+        dialogue_manager_node,
+        tts_node,
+        vision_node
+    ])
+```
+
+## Challenges and Solutions
+
+### Real-time Processing
+Conversational robotics requires real-time processing:
+- **Optimization**: Efficient algorithms and data structures
+- **Parallel processing**: Separate threads for different components
+- **Caching**: Pre-computed responses for common queries
+- **Prioritization**: Critical tasks get priority over optional ones
+
+### Robustness
+Systems must handle real-world conditions:
+- **Noise tolerance**: Working in noisy environments
+- **Variability**: Handling different accents and speaking styles
+- **Context changes**: Adapting to changing environments
+- **Error recovery**: Graceful degradation when components fail
+
+### Social Acceptance
+Robots must be socially acceptable:
+- **Natural interaction**: Smooth, human-like conversation flow
+- **Appropriate responses**: Culturally and socially appropriate
+- **Privacy respect**: Protecting user privacy
+- **Transparency**: Clear about robot capabilities and limitations
+
+## Evaluation Metrics
+
+### Technical Metrics
+- **Recognition accuracy**: ASR word error rate
+- **Response latency**: Time from input to response
+- **System uptime**: Reliability and availability
+- **Resource usage**: CPU, memory, and power consumption
+
+### Social Metrics
+- **Naturalness**: How natural the interaction feels
+- **Engagement**: User engagement and satisfaction
+- **Trust**: User trust in the robot
+- **Usability**: Ease of interaction
+
+## Best Practices
+
+### Design Principles
+- **User-centered design**: Focus on user needs and experience
+- **Incremental complexity**: Start simple, add complexity gradually
+- **Modular architecture**: Separate components for maintainability
+- **Safety-first**: Prioritize safety in all interactions
+
+### Testing Strategies
+- **Unit testing**: Test individual components
+- **Integration testing**: Test component interactions
+- **User studies**: Evaluate with real users
+- **Edge case testing**: Test unusual scenarios
+
+### Performance Optimization
+- **Efficient algorithms**: Choose algorithms optimized for robotics
+- **Resource management**: Monitor and optimize resource usage
+- **Asynchronous processing**: Non-blocking operations where possible
+- **Caching**: Store frequently used data and responses
+
+## Future Directions
+
+### Research Areas
+- **Multimodal learning**: Joint learning of language and perception
+- **Embodied language models**: Language models grounded in physical experience
+- **Social robotics**: Understanding social dynamics in robot interaction
+- **Affective computing**: Recognizing and responding to emotions
+
+### Emerging Technologies
+- **Transformer architectures**: More powerful language models
+- **Edge AI**: Running complex models on robot hardware
+- **5G connectivity**: Low-latency cloud-based processing
+- **Advanced sensors**: Better perception for context understanding
+
+## Summary
+Conversational robotics represents the integration of multiple AI technologies to create robots that can interact naturally with humans using language. Success requires careful attention to real-time processing, multimodal integration, and social acceptability. As language models and speech technologies continue to advance, conversational robots will become increasingly sophisticated and natural to interact with.
+
+## Next Steps
+This completes our 13-week Physical AI & Humanoid Robotics curriculum. Students now have the foundation to develop sophisticated humanoid robots capable of perception, navigation, manipulation, and natural interaction. The skills learned in this course provide a pathway to advanced robotics research and development.
+
+For continued learning, students should explore:
+- Advanced topics in humanoid locomotion and balance
+- Deep reinforcement learning for robot control
+- Advanced computer vision for robotics
+- Human-robot interaction research
+- Robotics competitions and challenges

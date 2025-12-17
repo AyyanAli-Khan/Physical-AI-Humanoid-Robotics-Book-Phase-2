@@ -1,0 +1,321 @@
+---
+title: 'Weeks 6-7: Robot Simulation with Gazebo'
+description: 'Simulation environments and tools for robotics development'
+sidebar_label: 'Weeks 6-7: Robot Simulation with Gazebo'
+sidebar_position: 6
+---
+
+# Weeks 6-7: Robot Simulation with Gazebo
+
+## Learning Objectives
+- Understand the role of simulation in robotics development
+- Install and configure Gazebo for robot simulation
+- Create simulation environments with custom worlds
+- Integrate ROS 2 with Gazebo using ROS 2 Control
+- Implement sensor simulation and physics modeling
+- Validate robot behavior in simulated environments
+
+## Introduction
+Robot simulation is a critical component of modern robotics development, allowing engineers to test algorithms, validate designs, and train AI systems in a safe, controlled environment before deployment on physical hardware. Gazebo (now Ignition Gazebo) provides a powerful simulation platform that accurately models physics, sensors, and environments for robotic applications.
+
+Simulation enables rapid prototyping, reduces development costs, and provides a safe testing ground for complex behaviors. It's particularly valuable for humanoid robotics, where physical testing can be expensive and potentially dangerous.
+
+## Gazebo Architecture and Components
+
+### Physics Engine
+Gazebo uses advanced physics engines (ODE, Bullet, Simbody) to accurately simulate rigid body dynamics, collisions, and contact forces. The physics engine handles:
+- Collision detection and response
+- Rigid body dynamics
+- Joint constraints
+- Contact modeling
+- Force and torque calculations
+
+### Sensor Simulation
+Gazebo provides realistic simulation of various sensor types:
+- **Camera sensors**: RGB, depth, and stereo cameras with noise models
+- **LIDAR sensors**: 2D and 3D laser range finders
+- **IMU sensors**: Inertial measurement units for orientation and acceleration
+- **Force/Torque sensors**: Joint force and torque measurements
+- **GPS sensors**: Global positioning system simulation
+- **Contact sensors**: Detect physical contact between objects
+
+### Rendering Engine
+The rendering engine provides realistic visualization of the simulation environment:
+- OpenGL-based rendering
+- Dynamic lighting and shadows
+- Texture mapping and materials
+- Real-time visualization
+- Off-screen rendering for headless simulation
+
+## Installing and Setting up Gazebo
+
+### Installation
+Gazebo can be installed as part of the ROS 2 ecosystem or standalone:
+```bash
+# Install Gazebo Fortress (recommended for ROS 2 Humble)
+sudo apt install ros-humble-gazebo-ros-pkgs ros-humble-gazebo-ros2-control
+
+# For Ignition Gazebo (newer version)
+sudo apt install ignition-fortress
+```
+
+### Basic Launch
+Start Gazebo with the default empty world:
+```bash
+# Using ROS 2 launch
+ros2 launch gazebo_ros gazebo.launch.py
+
+# Or directly
+gz sim
+```
+
+## Creating Custom Worlds
+
+### World File Structure
+Gazebo world files are XML-based and define the simulation environment:
+```xml
+<?xml version="1.0" ?>
+<sdf version="1.7">
+  <world name="my_world">
+    <!-- Include standard models -->
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!-- Define custom models -->
+    <model name="my_robot">
+      <!-- Model definition here -->
+    </model>
+
+    <!-- Define static objects -->
+    <model name="table">
+      <pose>2 0 0.5 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <box>
+              <size>1 1 0.1</size>
+            </box>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <box>
+              <size>1 1 0.1</size>
+            </box>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+  </world>
+</sdf>
+```
+
+### Physics Properties
+World files can define global physics properties:
+```xml
+<physics type="ode">
+  <max_step_size>0.001</max_step_size>
+  <real_time_factor>1</real_time_factor>
+  <real_time_update_rate>1000</real_time_update_rate>
+  <gravity>0 0 -9.8</gravity>
+</physics>
+```
+
+## ROS 2 Integration with Gazebo
+
+### Gazebo ROS Packages
+The `gazebo_ros_pkgs` provide essential interfaces:
+- **gazebo_ros**: Core ROS 2 plugins for Gazebo
+- **gazebo_plugins**: Various sensor and actuator plugins
+- **gazebo_msgs**: ROS 2 messages for Gazebo interaction
+- **gazebo_dev**: Development tools and libraries
+
+### Spawning Models
+Models can be spawned into Gazebo using ROS 2 services:
+```python
+import rclpy
+from rclpy.node import Node
+from gazebo_msgs.srv import SpawnEntity
+
+class ModelSpawner(Node):
+    def __init__(self):
+        super().__init__('model_spawner')
+        self.cli = self.create_client(SpawnEntity, '/spawn_entity')
+        while not self.cli.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service not available, waiting again...')
+
+    def spawn_model(self, model_xml, model_name, pose):
+        req = SpawnEntity.Request()
+        req.name = model_name
+        req.xml = model_xml
+        req.initial_pose = pose
+        future = self.cli.call_async(req)
+        rclpy.spin_until_future_complete(self, future)
+```
+
+### ROS 2 Control Integration
+ROS 2 Control provides standardized interfaces for hardware abstraction:
+```xml
+<!-- In robot URDF -->
+<ros2_control name="GazeboSystem" type="system">
+  <hardware>
+    <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+  </hardware>
+  <!-- Define joints and interfaces -->
+  <joint name="joint1">
+    <command_interface name="position"/>
+    <state_interface name="position"/>
+    <state_interface name="velocity"/>
+  </joint>
+</ros2_control>
+```
+
+## Sensor Simulation
+
+### Camera Sensors
+Camera sensors simulate vision systems:
+```xml
+<sensor name="camera" type="camera">
+  <camera>
+    <horizontal_fov>1.047</horizontal_fov>
+    <image>
+      <width>640</width>
+      <height>480</height>
+      <format>R8G8B8</format>
+    </image>
+    <clip>
+      <near>0.1</near>
+      <far>100</far>
+    </clip>
+  </camera>
+  <always_on>true</always_on>
+  <update_rate>30</update_rate>
+  <visualize>true</visualize>
+</sensor>
+```
+
+### LIDAR Sensors
+LIDAR sensors simulate range finders:
+```xml
+<sensor name="lidar" type="ray">
+  <ray>
+    <scan>
+      <horizontal>
+        <samples>360</samples>
+        <resolution>1</resolution>
+        <min_angle>-3.14159</min_angle>
+        <max_angle>3.14159</max_angle>
+      </horizontal>
+    </scan>
+    <range>
+      <min>0.1</min>
+      <max>10.0</max>
+      <resolution>0.01</resolution>
+    </range>
+  </ray>
+</sensor>
+```
+
+## Physics Simulation Parameters
+
+### Collision Detection
+Collision parameters affect simulation accuracy:
+- **Contact surface parameters**: Friction, restitution, and contact stiffness
+- **Solver parameters**: Iteration counts and error reduction
+- **Collision mesh quality**: Balance between accuracy and performance
+
+### Performance Optimization
+Tuning physics parameters for performance:
+- **Step size**: Smaller steps for accuracy, larger for performance
+- **Update rate**: Balance between realism and computational load
+- **Contact parameters**: Optimize for specific robot-environment interactions
+
+## Practical Implementation
+
+### Creating a Simulation Package
+```bash
+# Create simulation package
+ros2 pkg create --build-type ament_cmake my_robot_gazebo --dependencies gazebo_ros_pkgs gazebo_plugins
+```
+
+### Launch File for Simulation
+Create `launch/robot_gazebo.launch.py`:
+```python
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+
+
+def generate_launch_description():
+    # Launch configuration
+    world_arg = DeclareLaunchArgument(
+        'world',
+        default_value='empty_world',
+        description='Choose one of the world files from `/my_robot_gazebo/worlds`'
+    )
+
+    # Launch Gazebo
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            get_package_share_directory('gazebo_ros'),
+            '/launch/gazebo.launch.py'
+        ]),
+        launch_arguments={
+            'world': PathJoinSubstitution([
+                get_package_share_directory('my_robot_gazebo'),
+                'worlds',
+                LaunchConfiguration('world')
+            ])
+        }.items()
+    )
+
+    # Robot spawn node
+    spawn_entity = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-topic', 'robot_description',
+            '-entity', 'my_robot'
+        ],
+        output='screen'
+    )
+
+    return LaunchDescription([
+        world_arg,
+        gazebo,
+        spawn_entity
+    ])
+```
+
+## Best Practices
+
+### Simulation Fidelity
+- Match simulation parameters to real-world conditions
+- Include sensor noise models that reflect real sensor characteristics
+- Validate simulation results against physical robot data
+- Consider sim-to-real transfer challenges
+
+### Performance Optimization
+- Use simplified collision meshes for performance
+- Adjust physics parameters based on required accuracy
+- Limit update rates to necessary frequencies
+- Use level-of-detail models when appropriate
+
+### Testing and Validation
+- Test algorithms in simulation before physical deployment
+- Compare simulation and real-world robot behavior
+- Use simulation for stress testing and edge cases
+- Validate sensor models against real sensor data
+
+## Summary
+Gazebo provides a powerful simulation environment for robotics development, enabling safe and efficient testing of algorithms and robot behaviors. Understanding how to properly configure and utilize simulation tools is essential for developing robust robotic systems, particularly for complex platforms like humanoid robots.
+
+## Next Steps
+In the following weeks, we will explore Unity as an alternative simulation platform and discuss the integration of multiple simulation environments for comprehensive robot testing.

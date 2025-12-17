@@ -1,0 +1,149 @@
+# Docusaurus Configuration Contract
+
+## Site Configuration Schema
+
+```yaml
+title: "Physical AI & Humanoid Robotics"
+tagline: "Bridging the gap between digital AI and physical robots"
+favicon: "/img/favicon.ico"
+
+# Deployment settings
+organizationName: "physical-ai-lab"
+projectName: "physical-ai-humanoid-robotics-book"
+url: "https://physical-ai-lab.org"
+baseUrl: "/book/"
+deploymentBranch: "gh-pages"
+
+# GitHub Pages settings
+trailingSlash: "ignore"
+onBrokenLinks: "throw"
+onBrokenMarkdownLinks: "warn"
+
+# i18n settings
+i18n:
+  defaultLocale: "en"
+  locales: ["en"]
+```
+
+## Plugin Configuration
+
+### Docs Plugin
+```yaml
+docs:
+  sidebarPath: require.resolve("./sidebars.js")
+  editUrl: "https://github.com/physical-ai-lab/physical-ai-humanoid-robotics-book/edit/main/"
+  routeBasePath: "/"
+  path: "docs"
+  showLastUpdateTime: true
+  showLastUpdateAuthor: true
+```
+
+### Theme Configuration
+```yaml
+theme:
+  customCss: require.resolve("./src/css/custom.css")
+```
+
+### Sitemap Plugin
+```yaml
+sitemap:
+  changefreq: "weekly"
+  priority: 0.5
+  ignorePatterns: ["/tags/**"]
+```
+
+## Preset Configuration
+
+### Classic Preset Options
+```yaml
+presets:
+  - name: "@docusaurus/preset-classic"
+    options:
+      docs:
+        sidebarPath: require.resolve("./sidebars.js")
+        editUrl: "https://github.com/physical-ai-lab/physical-ai-humanoid-robotics-book/edit/main/"
+      blog: false  # Disable blog for this educational site
+      theme:
+        customCss: require.resolve("./src/css/custom.css")
+```
+
+## Navigation Configuration
+
+### Navbar Items
+```yaml
+navbar:
+  title: "Physical AI & Humanoid Robotics"
+  logo:
+    alt: "Physical AI Logo"
+    src: "/img/logo.svg"
+  items:
+    - type: "doc"
+      docId: "part-1-foundations/week-01-02-intro"
+      position: "left"
+      label: "Book"
+    - type: "doc"
+      docId: "appendices/appendix-a-hardware"
+      position: "left"
+      label: "Hardware"
+    - href: "https://github.com/physical-ai-lab/physical-ai-humanoid-robotics-book"
+      label: "GitHub"
+      position: "right"
+```
+
+### Footer Configuration
+```yaml
+footer:
+  style: "dark"
+  links:
+    - title: "Docs"
+      items:
+        - label: "Week 1-2: Introduction"
+          to: "/part-1-foundations/week-01-02-intro"
+        - label: "Week 3-5: ROS 2"
+          to: "/part-1-foundations/week-03-05-ros2"
+    - title: "Community"
+      items:
+        - label: "GitHub"
+          href: "https://github.com/physical-ai-lab/physical-ai-humanoid-robotics-book"
+  copyright: "Copyright © 2025 Physical AI Lab. Built with Docusaurus."
+```
+
+## API Endpoints (if needed for dynamic content)
+
+### Search API Contract
+```yaml
+search:
+  type: "algolia"
+  algolia:
+    appId: "YOUR_APP_ID"
+    apiKey: "YOUR_SEARCH_KEY"
+    indexName: "physical-ai-humanoid-robotics-book"
+    contextualSearch: true
+    searchPagePath: "search"
+```
+
+## Content Schema for MDX Files
+
+### Frontmatter Schema
+```yaml
+type: "doc"
+title: "Document Title"
+description: "Brief description of the content"
+keywords: ["keyword1", "keyword2", "keyword3"]
+sidebar_label: "Sidebar Display Text"
+sidebar_position: 1
+slug: "/custom-url-slug"
+tags: ["tag1", "tag2"]
+```
+
+### Content Structure Schema
+```yaml
+# Required sections for educational content
+- Title (from frontmatter)
+- Learning Objectives (bulleted list)
+- Prerequisites (if any)
+- Content Body (with appropriate headings)
+- Summary (key takeaways)
+- Exercises/Questions (if applicable)
+- Further Reading (relevant links)
+```

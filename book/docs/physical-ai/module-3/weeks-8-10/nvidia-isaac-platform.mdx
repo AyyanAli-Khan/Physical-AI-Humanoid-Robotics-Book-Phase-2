@@ -1,0 +1,299 @@
+---
+title: 'Weeks 8-10: NVIDIA Isaac Platform'
+description: 'AI-powered robotics platform for perception, navigation, and manipulation'
+sidebar_label: 'Weeks 8-10: NVIDIA Isaac Platform'
+sidebar_position: 8
+---
+
+# Weeks 8-10: NVIDIA Isaac Platform
+
+## Learning Objectives
+- Understand the NVIDIA Isaac ecosystem and its components
+- Install and configure Isaac Sim for robotics simulation
+- Implement perception pipelines using Isaac ROS
+- Deploy navigation and manipulation algorithms on Isaac platform
+- Leverage GPU acceleration for real-time robotics applications
+- Integrate Isaac with ROS 2 and Gazebo workflows
+
+## Introduction
+The NVIDIA Isaac platform represents a comprehensive solution for AI-powered robotics, combining simulation, perception, navigation, and manipulation capabilities with GPU acceleration. The platform consists of multiple components that work together to accelerate robotics development, from simulation and training to deployment on physical robots.
+
+Isaac includes Isaac Sim (physics simulation), Isaac ROS (perception and navigation packages), Isaac Apps (pre-built applications), and Isaac Lab (research framework). This module focuses on leveraging these tools for humanoid robotics applications.
+
+## Isaac Platform Components
+
+### Isaac Sim
+Isaac Sim is NVIDIA's robotics simulation application built on the Omniverse platform. It provides:
+- High-fidelity physics simulation with PhysX
+- Photo-realistic rendering using RTX technology
+- Support for complex environments and scenarios
+- Integration with ROS 2 and ROS 1
+- AI training capabilities with synthetic data generation
+
+### Isaac ROS
+Isaac ROS provides GPU-accelerated perception and navigation packages:
+- **ISAAC_ROS Apriltag**: Fast AprilTag detection for pose estimation
+- **ISAAC_ROS AprilTag Pose Estimator**: 6-DOF pose estimation from AprilTags
+- **ISAAC_ROS CenterPose**: 6-DOF pose estimation for objects
+- **ISAAC_ROS DNN Image Encoding**: GPU-accelerated neural network inference
+- **ISAAC_ROS FPMock Stereo Node**: Stereo vision processing
+- **ISAAC_ROS H264 Decoder**: Hardware-accelerated video decoding
+- **ISAAC_ROS Image Pipeline**: Image rectification and preprocessing
+- **ISAAC_ROS ISAAC_ROS NITROS**: Network Input/Output Transport for ROS
+- **ISAAC_ROS Stereo Disparity**: Stereo vision disparity map generation
+- **ISAAC_ROS Visual Slam**: Visual SLAM for localization and mapping
+
+### Isaac Apps
+Pre-built applications for common robotics tasks:
+- Navigation stack with obstacle avoidance
+- Manipulation stack with grasping capabilities
+- Perception stack with object detection
+- Teleoperation interfaces
+
+## Installation and Setup
+
+### System Requirements
+- NVIDIA GPU with CUDA compute capability 6.0 or higher
+- Ubuntu 20.04 LTS or 22.04 LTS
+- NVIDIA driver version 520 or higher
+- CUDA 11.8 or higher
+- Docker and NVIDIA Container Toolkit
+
+### Installing Isaac ROS
+```bash
+# Add NVIDIA package repository
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-keyring_1.0-1_all.deb
+sudo dpkg -i cuda-keyring_1.0-1_all.deb
+sudo apt-get update
+
+# Install Isaac ROS packages
+sudo apt install ros-humble-isaac-ros-dev-tools
+sudo apt install ros-humble-isaac-ros-apriltag
+sudo apt install ros-humble-isaac-ros-visual-slam
+sudo apt install ros-humble-isaac-ros-dnn-image-encoder
+```
+
+### Installing Isaac Sim
+Isaac Sim can be installed through Omniverse Launcher:
+1. Download and install NVIDIA Omniverse Launcher
+2. Install Isaac Sim from the app store
+3. Configure GPU settings for optimal performance
+
+## Isaac Sim Features
+
+### Physics Simulation
+Isaac Sim uses NVIDIA PhysX for accurate physics simulation:
+- Rigid body dynamics
+- Soft body simulation
+- Fluid simulation
+- Contact modeling
+- Collision detection
+
+### Rendering Capabilities
+- RTX real-time ray tracing
+- Physically-based rendering
+- Global illumination
+- Multi-camera support
+- Synthetic data generation
+
+### Environment Tools
+- Procedural environment generation
+- Asset library with robots and objects
+- Scene composition tools
+- Domain randomization for training
+
+## Isaac ROS Integration
+
+### Perception Pipeline
+Isaac ROS packages provide GPU-accelerated perception:
+```python
+# Example: Using Isaac ROS Apriltag detector
+import rclpy
+from rclpy.node import Node
+from vision_msgs.msg import AprilTagDetectionArray
+from sensor_msgs.msg import Image
+
+class AprilTagDetector(Node):
+    def __init__(self):
+        super().__init__('april_tag_detector')
+
+        # Subscribe to camera image
+        self.image_sub = self.create_subscription(
+            Image,
+            '/camera/image_raw',
+            self.image_callback,
+            10
+        )
+
+        # Publish detections
+        self.detection_pub = self.create_publisher(
+            AprilTagDetectionArray,
+            '/april_tags',
+            10
+        )
+
+    def image_callback(self, msg):
+        # Process image with Isaac ROS Apriltag detector
+        # GPU-accelerated processing
+        pass
+```
+
+### Navigation and SLAM
+Isaac provides enhanced navigation capabilities:
+- Visual SLAM for localization
+- GPU-accelerated path planning
+- Dynamic obstacle avoidance
+- Multi-robot coordination
+
+### Hardware Acceleration
+Isaac ROS leverages multiple hardware accelerators:
+- **GPU**: Parallel processing for perception algorithms
+- **Tensor Cores**: AI inference acceleration
+- **Hardware video codecs**: Video encoding/decoding
+- **Multi-core CPU**: Parallel processing for control loops
+
+## Practical Implementation
+
+### Creating an Isaac ROS Package
+```bash
+# Create Isaac ROS package
+ros2 pkg create --build-type ament_cmake my_isaac_robot --dependencies \
+  isaac_ros_apriltag \
+  isaac_ros_visual_slam \
+  image_transport \
+  cv_bridge \
+  vision_msgs
+```
+
+### Isaac Sim Integration Example
+```python
+# Launch file for Isaac Sim integration
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+def generate_launch_description():
+    # Launch arguments
+    use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation time if true'
+    )
+
+    # Isaac ROS Apriltag node
+    apriltag_node = Node(
+        package='isaac_ros_apriltag',
+        executable='isaac_ros_apriltag_exe',
+        parameters=[{
+            'family': 'tag36h11',
+            'max_tags': 64,
+            'tag_size': 0.166,
+        }],
+        remappings=[
+            ('image', '/camera/image_rect_color'),
+            ('camera_info', '/camera/camera_info'),
+        ]
+    )
+
+    # Isaac ROS Visual SLAM node
+    visual_slam_node = Node(
+        package='isaac_ros_visual_slam',
+        executable='isaac_ros_visual_slam_node',
+        parameters=[{
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'enable_debug_mode': False,
+            'use_viz': True,
+        }],
+        remappings=[
+            ('/camera/left/image_rect_color', '/camera/image_rect_color'),
+            ('/camera/left/camera_info', '/camera/camera_info'),
+        ]
+    )
+
+    return LaunchDescription([
+        use_sim_time,
+        apriltag_node,
+        visual_slam_node,
+    ])
+```
+
+## Isaac Sim Workflows
+
+### Robot Simulation
+Simulating robots in Isaac Sim involves:
+1. Importing robot models (URDF/SDF)
+2. Configuring sensors and actuators
+3. Setting up physics properties
+4. Creating environments and scenarios
+5. Running simulations with various conditions
+
+### AI Training
+Isaac Sim enables AI training through:
+- Synthetic data generation
+- Domain randomization
+- Curriculum learning
+- Reinforcement learning environments
+- Transfer learning to real robots
+
+### Testing and Validation
+- Performance benchmarking
+- Algorithm validation
+- Safety testing
+- Edge case exploration
+- Multi-robot scenarios
+
+## Best Practices
+
+### Performance Optimization
+- Use appropriate GPU settings for simulation
+- Optimize physics parameters for performance vs accuracy
+- Implement efficient perception pipelines
+- Use multi-threading for parallel processing
+
+### Development Workflow
+- Develop and test in simulation first
+- Validate simulation-to-reality transfer
+- Use version control for assets and scenes
+- Document simulation scenarios
+
+### Safety and Validation
+- Test edge cases in simulation
+- Validate safety-critical algorithms
+- Implement redundancy in critical systems
+- Monitor system performance metrics
+
+## Integration with Existing ROS 2 Systems
+
+### ROS 2 Bridge
+Isaac Sim provides ROS 2 bridge for seamless integration:
+- Message type compatibility
+- TF tree integration
+- Parameter server integration
+- Service and action support
+
+### Mixed Simulation Environments
+- Combining Isaac Sim with Gazebo
+- Using different simulators for different tasks
+- Simulation-to-simulation transfer
+- Consistent coordinate frames
+
+## Hardware Considerations
+
+### GPU Requirements
+- RTX 3060 or higher recommended
+- VRAM: 8GB+ for complex scenes
+- CUDA cores: More is better for parallel processing
+- Tensor cores: For AI acceleration
+
+### System Configuration
+- CPU: Multi-core processor for parallel processing
+- RAM: 16GB+ recommended for complex simulations
+- Storage: SSD for fast asset loading
+- Network: High bandwidth for remote rendering
+
+## Summary
+The NVIDIA Isaac platform provides a comprehensive solution for AI-powered robotics, combining high-fidelity simulation with GPU-accelerated perception and navigation. Understanding how to leverage these tools is essential for developing advanced humanoid robotics applications that require real-time AI processing and complex perception capabilities.
+
+## Next Steps
+In the following weeks, we will explore Vision-Language-Action systems that integrate perception, reasoning, and action in humanoid robots, building on the foundation of simulation and AI acceleration established in this module.

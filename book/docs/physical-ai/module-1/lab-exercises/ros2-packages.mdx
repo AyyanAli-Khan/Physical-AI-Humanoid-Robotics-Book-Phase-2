@@ -1,0 +1,369 @@
+---
+title: 'Lab: Building a ROS 2 Package and Launch File'
+description: 'Hands-on lab for creating ROS 2 packages and launch configurations'
+sidebar_label: 'Lab: Building a ROS 2 Package and Launch File'
+sidebar_position: 4
+---
+
+# Lab: Building a ROS 2 Package and Launch File
+
+## Learning Objectives
+- Create a complete ROS 2 package with multiple nodes
+- Write launch files to start multiple nodes simultaneously
+- Understand package dependencies and build configurations
+- Use parameters and configuration files in ROS 2
+- Debug and troubleshoot package builds
+
+## Prerequisites
+- ROS 2 installed and sourced
+- Basic understanding of ROS 2 packages
+- Completed "Your First ROS 2 Node" lab
+
+## Lab Instructions
+
+### Step 1: Create a New Package
+Create a new package for this lab:
+```bash
+cd ~/ros2_workspace/src
+ros2 pkg create --build-type ament_python my_robot_controller --dependencies rclpy std_msgs geometry_msgs
+```
+
+### Step 2: Create Multiple Nodes
+Create a directory for Python modules and add two nodes:
+
+Create `my_robot_controller/turtle_controller.py`:
+```python
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from std_msgs.msg import String
+import math
+
+
+class TurtleController(Node):
+
+    def __init__(self):
+        super().__init__('turtle_controller')
+
+        # Create publisher for velocity commands
+        self.cmd_vel_publisher = self.create_publisher(Twist, 'cmd_vel', 10)
+
+        # Create subscriber for commands
+        self.command_subscriber = self.create_subscription(
+            String,
+            'robot_command',
+            self.command_callback,
+            10
+        )
+
+        # Create timer for periodic control
+        self.timer = self.create_timer(0.1, self.control_loop)
+
+        # Initialize variables
+        self.linear_speed = 0.0
+        self.angular_speed = 0.0
+        self.is_moving = False
+
+        self.get_logger().info('Turtle Controller node initialized')
+
+    def command_callback(self, msg):
+        command = msg.data.lower()
+
+        if command == 'forward':
+            self.linear_speed = 1.0
+            self.angular_speed = 0.0
+            self.is_moving = True
+        elif command == 'stop':
+            self.linear_speed = 0.0
+            self.angular_speed = 0.0
+            self.is_moving = False
+        elif command == 'circle':
+            self.linear_speed = 0.5
+            self.angular_speed = 0.5
+            self.is_moving = True
+        else:
+            self.get_logger().warn(f'Unknown command: {command}')
+
+    def control_loop(self):
+        if self.is_moving:
+            msg = Twist()
+            msg.linear.x = self.linear_speed
+            msg.angular.z = self.angular_speed
+            self.cmd_vel_publisher.publish(msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = TurtleController()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Create `my_robot_controller/command_publisher.py`:
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import time
+
+
+class CommandPublisher(Node):
+
+    def __init__(self):
+        super().__init__('command_publisher')
+        self.publisher = self.create_publisher(String, 'robot_command', 10)
+
+        # Create a timer to send commands periodically
+        self.timer = self.create_timer(3.0, self.publish_commands)
+        self.command_sequence = ['forward', 'stop', 'circle', 'stop']
+        self.current_command_index = 0
+
+        self.get_logger().info('Command Publisher node initialized')
+
+    def publish_commands(self):
+        if self.current_command_index < len(self.command_sequence):
+            msg = String()
+            msg.data = self.command_sequence[self.current_command_index]
+            self.publisher.publish(msg)
+            self.get_logger().info(f'Published command: {msg.data}')
+            self.current_command_index += 1
+        else:
+            # Reset sequence after completing all commands
+            self.current_command_index = 0
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = CommandPublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Step 3: Create Launch Directory and File
+Create the launch directory:
+```bash
+mkdir -p my_robot_controller/launch
+```
+
+Create `my_robot_controller/launch/robot_control_launch.py`:
+```python
+from launch import LaunchDescription
+from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from ament_index_python.packages import get_package_share_directory
+import os
+
+
+def generate_launch_description():
+    # Declare launch arguments
+    linear_speed_arg = DeclareLaunchArgument(
+        'linear_speed',
+        default_value='1.0',
+        description='Linear speed for the robot'
+    )
+
+    angular_speed_arg = DeclareLaunchArgument(
+        'angular_speed',
+        default_value='0.5',
+        description='Angular speed for the robot'
+    )
+
+    # Get launch configurations
+    linear_speed = LaunchConfiguration('linear_speed')
+    angular_speed = LaunchConfiguration('angular_speed')
+
+    # Create nodes
+    turtle_controller_node = Node(
+        package='my_robot_controller',
+        executable='turtle_controller',
+        name='turtle_controller',
+        parameters=[
+            {'linear_speed': linear_speed},
+            {'angular_speed': angular_speed}
+        ],
+        output='screen'
+    )
+
+    command_publisher_node = Node(
+        package='my_robot_controller',
+        executable='command_publisher',
+        name='command_publisher',
+        output='screen'
+    )
+
+    return LaunchDescription([
+        linear_speed_arg,
+        angular_speed_arg,
+        turtle_controller_node,
+        command_publisher_node
+    ])
+```
+
+### Step 4: Update setup.py
+Edit the `setup.py` file to include both nodes:
+
+```python
+from setuptools import find_packages
+from setuptools import setup
+
+package_name = 'my_robot_controller'
+
+setup(
+    name=package_name,
+    version='0.0.0',
+    packages=find_packages(exclude=['test']),
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+        ('share/' + package_name + '/launch',
+            ['launch/robot_control_launch.py']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Your Name',
+    maintainer_email='your.email@example.com',
+    description='Robot controller with launch file example',
+    license='Apache License 2.0',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'turtle_controller = my_robot_controller.turtle_controller:main',
+            'command_publisher = my_robot_controller.command_publisher:main',
+        ],
+    },
+)
+```
+
+### Step 5: Create Parameter Configuration
+Create a config directory and parameter file:
+```bash
+mkdir -p my_robot_controller/config
+```
+
+Create `my_robot_controller/config/robot_params.yaml`:
+```yaml
+/**:
+  ros__parameters:
+    linear_speed: 1.0
+    angular_speed: 0.5
+    max_linear_speed: 2.0
+    max_angular_speed: 1.0
+```
+
+### Step 6: Update Launch File to Use Parameters
+Modify the launch file to also load parameters:
+
+```python
+from launch import LaunchDescription
+from launch_ros.actions import Node, SetParameter
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from ament_index_python.packages import get_package_share_directory
+import os
+
+
+def generate_launch_description():
+    # Declare launch arguments
+    linear_speed_arg = DeclareLaunchArgument(
+        'linear_speed',
+        default_value='1.0',
+        description='Linear speed for the robot'
+    )
+
+    angular_speed_arg = DeclareLaunchArgument(
+        'angular_speed',
+        default_value='0.5',
+        description='Angular speed for the robot'
+    )
+
+    # Get launch configurations
+    linear_speed = LaunchConfiguration('linear_speed')
+    angular_speed = LaunchConfiguration('angular_speed')
+
+    # Get parameter file path
+    config = PathJoinSubstitution([
+        get_package_share_directory('my_robot_controller'),
+        'config',
+        'robot_params.yaml'
+    ])
+
+    # Create nodes
+    turtle_controller_node = Node(
+        package='my_robot_controller',
+        executable='turtle_controller',
+        name='turtle_controller',
+        parameters=[
+            {'linear_speed': linear_speed},
+            {'angular_speed': angular_speed},
+            config  # Load from YAML file
+        ],
+        output='screen'
+    )
+
+    command_publisher_node = Node(
+        package='my_robot_controller',
+        executable='command_publisher',
+        name='command_publisher',
+        output='screen'
+    )
+
+    return LaunchDescription([
+        linear_speed_arg,
+        angular_speed_arg,
+        turtle_controller_node,
+        command_publisher_node
+    ])
+```
+
+### Step 7: Build the Package
+Go back to the workspace root and build:
+```bash
+cd ~/ros2_workspace
+colcon build --packages-select my_robot_controller
+```
+
+### Step 8: Source and Test the Launch File
+```bash
+source install/setup.bash
+ros2 launch my_robot_controller robot_control_launch.py
+```
+
+## Verification Steps
+1. Confirm both nodes start successfully
+2. Check that parameters are loaded correctly with `ros2 param list`
+3. Verify communication between nodes
+4. Test parameter modification during runtime
+
+## Expected Outcomes
+- A complete ROS 2 package with multiple nodes
+- A launch file that starts all nodes with parameters
+- Understanding of parameter management
+- Knowledge of package dependencies and structure
+
+## Assessment Criteria
+- Package builds successfully
+- Launch file starts all nodes correctly
+- Parameters are properly configured
+- Nodes communicate as expected
+- Code follows ROS 2 best practices
+
+## Troubleshooting
+- Ensure all dependencies are listed in setup.py and package.xml
+- Check that executable names match entry points in setup.py
+- Verify file permissions and paths
+- Use `ros2 launch --show-args` to see available arguments
+
+## Extension Exercise
+Add more complex parameters like robot dimensions or sensor configurations, and implement runtime parameter updates using the ROS 2 parameters interface.

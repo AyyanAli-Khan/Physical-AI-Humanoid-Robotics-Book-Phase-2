@@ -1,0 +1,115 @@
+---
+title: 'Weeks 3-5: ROS 2 Fundamentals'
+description: 'Core concepts and architecture of Robot Operating System 2'
+sidebar_label: 'Weeks 3-5: ROS 2 Fundamentals'
+sidebar_position: 2
+---
+
+# Weeks 3-5: ROS 2 Fundamentals
+
+## Learning Objectives
+- Understand the architecture and concepts of ROS 2
+- Create and manage ROS 2 nodes, topics, and services
+- Implement message passing and service calls
+- Use ROS 2 tools for debugging and visualization
+- Package and build ROS 2 applications
+
+## Introduction
+ROS 2 (Robot Operating System 2) is the next-generation middleware framework for robotics applications. Unlike a traditional operating system, ROS 2 provides a collection of libraries, tools, and conventions that simplify the development of complex robotic systems. It enables communication between different software components, hardware abstraction, device drivers, and visualization tools.
+
+ROS 2 addresses limitations of the original ROS framework, including improved security, real-time support, and better integration with industry standards. It uses DDS (Data Distribution Service) as its underlying communication layer, providing reliable message delivery and improved performance in distributed systems.
+
+## Core Architecture
+
+### Nodes
+A node is a process that performs computation. In ROS 2, nodes are designed to be modular and focused on specific tasks. Each node typically handles a particular sensor, actuator, or algorithm. Nodes are implemented using client libraries such as `rclcpp` for C++ or `rclpy` for Python.
+
+### Topics and Publishers/Subscribers
+Topics enable asynchronous communication between nodes using a publish/subscribe pattern. Publishers send messages to topics, while subscribers receive messages from topics. This decouples nodes from each other, allowing for flexible system design.
+
+```python
+# Example Python publisher
+import rclpy
+from std_msgs.msg import String
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = rclpy.create_node('publisher_node')
+    publisher = node.create_publisher(String, 'topic_name', 10)
+
+    def timer_callback():
+        msg = String()
+        msg.data = 'Hello World'
+        publisher.publish(msg)
+
+    timer = node.create_timer(0.5, timer_callback)
+    rclpy.spin(node)
+```
+
+### Services and Clients
+Services provide synchronous request/response communication between nodes. A service has a specific request message type and a response message type. Services are useful for operations that require a specific response or when communication should block until completion.
+
+### Actions
+Actions are used for long-running tasks that require feedback and the ability to cancel. They combine the features of topics and services, providing goal, feedback, and result messages.
+
+## Message Types
+ROS 2 defines standard message types for common data structures:
+- **std_msgs**: Basic data types (integers, floats, strings, etc.)
+- **geometry_msgs**: Spatial data (points, poses, transforms)
+- **sensor_msgs**: Sensor data (images, laser scans, IMU data)
+- **nav_msgs**: Navigation-specific messages
+- **custom messages**: User-defined message types for specific applications
+
+## ROS 2 Tools
+
+### Command Line Tools
+- `ros2 run`: Execute a node from a package
+- `ros2 launch`: Start multiple nodes with configuration
+- `ros2 topic`: Inspect and interact with topics
+- `ros2 service`: Inspect and interact with services
+- `ros2 action`: Inspect and interact with actions
+- `ros2 bag`: Record and replay data
+
+### Visualization Tools
+- **RViz2**: 3D visualization tool for robotics data
+- **rqt**: Qt-based framework for GUI plugins
+- **PlotJuggler**: Real-time plotting of time series data
+
+## Quality of Service (QoS)
+ROS 2 provides Quality of Service policies that allow fine-tuning of communication behavior:
+- **Reliability**: Best effort or reliable delivery
+- **Durability**: Volatile or transient local
+- **History**: Keep last N messages or keep all messages
+- **Deadline**: Maximum time between consecutive messages
+- **Liveliness**: How to detect if a publisher is alive
+
+## Building and Package Management
+ROS 2 uses the `colcon` build system for compiling packages. The standard package structure includes:
+- `package.xml`: Package metadata and dependencies
+- `CMakeLists.txt`: Build configuration for C++
+- `setup.py`: Build configuration for Python
+- `src/`: Source code files
+- `launch/`: Launch configuration files
+- `config/`: Configuration files
+
+## Practical Implementation
+Students will implement:
+1. A publisher node that broadcasts sensor data
+2. A subscriber node that processes incoming messages
+3. A service server that responds to requests
+4. A client node that makes service calls
+5. A launch file that starts multiple nodes simultaneously
+
+## Best Practices
+- Keep nodes focused on single responsibilities
+- Use appropriate QoS settings for your application
+- Implement proper error handling and logging
+- Follow ROS 2 naming conventions
+- Document message interfaces clearly
+- Use launch files for complex system startup
+
+## Summary
+ROS 2 provides the foundational communication infrastructure for robotic systems. Understanding its architecture, tools, and best practices is essential for developing robust and maintainable robotic applications. The modular design allows for flexible system composition and easy integration of new components.
+
+## Next Steps
+In the following weeks, students will work on lab exercises to implement ROS 2 nodes and practice message passing patterns in real-world scenarios.

@@ -1,0 +1,983 @@
+---
+title: 'Lab: Launching a URDF Robot in Gazebo'
+description: 'Hands-on lab for integrating ROS 2 robots with Gazebo simulation'
+sidebar_label: 'Lab: Launching a URDF Robot in Gazebo'
+sidebar_position: 7
+---
+
+# Lab: Launching a URDF Robot in Gazebo
+
+## Learning Objectives
+- Integrate a URDF robot model with Gazebo simulation
+- Configure ROS 2 Control for simulated robot hardware
+- Launch and control a robot in Gazebo environment
+- Verify sensor and actuator functionality in simulation
+- Understand the sim-to-real transfer process
+
+## Prerequisites
+- Completed URDF definition lab
+- ROS 2 with Gazebo packages installed
+- Basic understanding of ROS 2 Control
+- Understanding of robot kinematics
+
+## Lab Instructions
+
+### Step 1: Prepare the Robot Model
+Ensure your URDF model from the previous lab is available. For this lab, we'll use the simple humanoid model and enhance it for Gazebo simulation.
+
+Create a new package for the simulation:
+```bash
+cd ~/ros2_workspace/src
+ros2 pkg create --build-type ament_cmake my_robot_gazebo --dependencies gazebo_ros_pkgs gazebo_plugins robot_state_publisher joint_state_publisher controller_manager ros2_control ros2_controllers
+```
+
+### Step 2: Update URDF for Gazebo Simulation
+Create an enhanced URDF file with Gazebo-specific elements. Create `~/ros2_workspace/src/my_robot_gazebo/urdf/simple_humanoid_gazebo.urdf`:
+
+```xml
+<?xml version="1.0"?>
+<robot name="simple_humanoid_gazebo" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Include the original URDF -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <link name="torso">
+    <visual>
+      <geometry>
+        <box size="0.15 0.1 0.4"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.1 0.4"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.0"/>
+      <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.05" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <joint name="base_to_torso" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+    <origin xyz="0 0 0.25"/>
+  </joint>
+
+  <link name="head">
+    <visual>
+      <geometry>
+        <sphere radius="0.075"/>
+      </geometry>
+      <material name="white">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.075"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <joint name="neck_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="head"/>
+    <origin xyz="0 0 0.25"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <!-- Additional links and joints from previous lab -->
+  <!-- (Add all the remaining links and joints from the original URDF) -->
+
+  <!-- Left Arm -->
+  <link name="left_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <link name="left_lower_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/>
+    </inertial>
+  </link>
+
+  <joint name="left_shoulder_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="left_upper_arm"/>
+    <origin xyz="0.075 0 0.1" rpy="0 0 1.57"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <joint name="left_elbow_joint" type="revolute">
+    <parent link="left_upper_arm"/>
+    <child link="left_lower_arm"/>
+    <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Right Arm -->
+  <link name="right_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <link name="right_lower_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/>
+    </inertial>
+  </link>
+
+  <joint name="right_shoulder_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="right_upper_arm"/>
+    <origin xyz="-0.075 0 0.1" rpy="0 0 -1.57"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <joint name="right_elbow_joint" type="revolute">
+    <parent link="right_upper_arm"/>
+    <child link="right_lower_arm"/>
+    <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Left Leg -->
+  <link name="left_upper_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="left_lower_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.0015" ixy="0" ixz="0" iyy="0.0015" iyz="0" izz="0.0015"/>
+    </inertial>
+  </link>
+
+  <link name="left_foot">
+    <visual>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="left_hip_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="left_upper_leg"/>
+    <origin xyz="0.05 -0.05 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="left_knee_joint" type="revolute">
+    <parent link="left_upper_leg"/>
+    <child link="left_lower_leg"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="left_ankle_joint" type="revolute">
+    <parent link="left_lower_leg"/>
+    <child link="left_foot"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Right Leg -->
+  <link name="right_upper_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="right_lower_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.0015" ixy="0" ixz="0" iyy="0.0015" iyz="0" izz="0.0015"/>
+    </inertial>
+  </link>
+
+  <link name="right_foot">
+    <visual>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <joint name="right_hip_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="right_upper_leg"/>
+    <origin xyz="-0.05 -0.05 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="right_knee_joint" type="revolute">
+    <parent link="right_upper_leg"/>
+    <child link="right_lower_leg"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="right_ankle_joint" type="revolute">
+    <parent link="right_lower_leg"/>
+    <child link="right_foot"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Gazebo-specific elements -->
+  <gazebo reference="base_link">
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+  <gazebo reference="torso">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="head">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="left_upper_arm">
+    <material>Gazebo/Green</material>
+  </gazebo>
+
+  <gazebo reference="left_lower_arm">
+    <material>Gazebo/Green</material>
+  </gazebo>
+
+  <gazebo reference="right_upper_arm">
+    <material>Gazebo/Green</material>
+  </gazebo>
+
+  <gazebo reference="right_lower_arm">
+    <material>Gazebo/Green</material>
+  </gazebo>
+
+  <gazebo reference="left_upper_leg">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+
+  <gazebo reference="left_lower_leg">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+
+  <gazebo reference="left_foot">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <gazebo reference="right_upper_leg">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+
+  <gazebo reference="right_lower_leg">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+
+  <gazebo reference="right_foot">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+  <!-- ROS 2 Control plugin -->
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <!-- Define joints for control -->
+    <joint name="neck_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_shoulder_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_elbow_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_shoulder_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_elbow_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_hip_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_hip_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_knee_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_ankle_joint">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- Gazebo plugin for ROS 2 Control -->
+  <gazebo>
+    <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+      <parameters>$(find my_robot_gazebo)/config/my_robot_control.yaml</parameters>
+    </plugin>
+  </gazebo>
+</robot>
+```
+
+### Step 3: Create Control Configuration
+Create `~/ros2_workspace/src/my_robot_gazebo/config/my_robot_control.yaml`:
+```yaml
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    neck_position_controller:
+      type: position_controllers/JointPositionController
+
+    left_arm_controller:
+      type: position_controllers/JointGroupPositionController
+
+    right_arm_controller:
+      type: position_controllers/JointGroupPositionController
+
+    left_leg_controller:
+      type: position_controllers/JointGroupPositionController
+
+    right_leg_controller:
+      type: position_controllers/JointGroupPositionController
+
+neck_position_controller:
+  ros__parameters:
+    joint: neck_joint
+
+left_arm_controller:
+  ros__parameters:
+    joints:
+      - left_shoulder_joint
+      - left_elbow_joint
+
+right_arm_controller:
+  ros__parameters:
+    joints:
+      - right_shoulder_joint
+      - right_elbow_joint
+
+left_leg_controller:
+  ros__parameters:
+    joints:
+      - left_hip_joint
+      - left_knee_joint
+      - left_ankle_joint
+
+right_leg_controller:
+  ros__parameters:
+    joints:
+      - right_hip_joint
+      - right_knee_joint
+      - right_ankle_joint
+```
+
+### Step 4: Create Launch Files
+Create the launch directory and launch file:
+```bash
+mkdir -p ~/ros2_workspace/src/my_robot_gazebo/launch
+```
+
+Create `~/ros2_workspace/src/my_robot_gazebo/launch/robot_gazebo.launch.py`:
+```python
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+
+
+def generate_launch_description():
+    # Launch arguments
+    use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation (Gazebo) clock if true'
+    )
+
+    # Get URDF via xacro
+    robot_description_content = Command(
+        [
+            PathJoinSubstitution([FindExecutable(name="xacro")]),
+            " ",
+            PathJoinSubstitution([FindPackageShare("my_robot_gazebo"), "urdf", "simple_humanoid_gazebo.urdf"]),
+        ]
+    )
+    robot_description = {"robot_description": robot_description_content}
+
+    # Spawn robot in Gazebo
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            FindPackageShare("gazebo_ros"),
+            "/launch",
+            "/gazebo.launch.py",
+        ]),
+    )
+
+    # Robot State Publisher
+    node_robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[robot_description]
+    )
+
+    # Spawn entity
+    spawn_entity = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-topic', 'robot_description',
+            '-entity', 'simple_humanoid',
+            '-x', '0.0',
+            '-y', '0.0',
+            '-z', '1.0',
+        ],
+        output='screen'
+    )
+
+    # Load controllers
+    load_joint_state_broadcaster = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'joint_state_broadcaster'],
+        output='screen'
+    )
+
+    load_neck_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'neck_position_controller'],
+        output='screen'
+    )
+
+    load_left_arm_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'left_arm_controller'],
+        output='screen'
+    )
+
+    load_right_arm_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'right_arm_controller'],
+        output='screen'
+    )
+
+    load_left_leg_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'left_leg_controller'],
+        output='screen'
+    )
+
+    load_right_leg_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'right_leg_controller'],
+        output='screen'
+    )
+
+    return LaunchDescription([
+        use_sim_time,
+        gazebo,
+        node_robot_state_publisher,
+        spawn_entity,
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=spawn_entity,
+                on_exit=[load_joint_state_broadcaster],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_joint_state_broadcaster,
+                on_exit=[load_neck_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_neck_controller,
+                on_exit=[load_left_arm_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_left_arm_controller,
+                on_exit=[load_right_arm_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_right_arm_controller,
+                on_exit=[load_left_leg_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_left_leg_controller,
+                on_exit=[load_right_leg_controller],
+            )
+        ),
+    ])
+```
+
+We need to add the ExecuteProcess import to the launch file. Let me fix this:
+
+```python
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration, PathJoinSubstitution
+from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+
+
+def generate_launch_description():
+    # Launch arguments
+    use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation (Gazebo) clock if true'
+    )
+
+    # Get URDF via xacro
+    robot_description_content = Command(
+        [
+            PathJoinSubstitution([FindExecutable(name="xacro")]),
+            " ",
+            PathJoinSubstitution([FindPackageShare("my_robot_gazebo"), "urdf", "simple_humanoid_gazebo.urdf"]),
+        ]
+    )
+    robot_description = {"robot_description": robot_description_content}
+
+    # Spawn robot in Gazebo
+    gazebo = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            FindPackageShare("gazebo_ros"),
+            "/launch",
+            "/gazebo.launch.py",
+        ]),
+    )
+
+    # Robot State Publisher
+    node_robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        output='screen',
+        parameters=[robot_description]
+    )
+
+    # Spawn entity
+    spawn_entity = Node(
+        package='gazebo_ros',
+        executable='spawn_entity.py',
+        arguments=[
+            '-topic', 'robot_description',
+            '-entity', 'simple_humanoid',
+            '-x', '0.0',
+            '-y', '0.0',
+            '-z', '1.0',
+        ],
+        output='screen'
+    )
+
+    # Load controllers
+    load_joint_state_broadcaster = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'joint_state_broadcaster'],
+        output='screen'
+    )
+
+    load_neck_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'neck_position_controller'],
+        output='screen'
+    )
+
+    load_left_arm_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'left_arm_controller'],
+        output='screen'
+    )
+
+    load_right_arm_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'right_arm_controller'],
+        output='screen'
+    )
+
+    load_left_leg_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'left_leg_controller'],
+        output='screen'
+    )
+
+    load_right_leg_controller = ExecuteProcess(
+        cmd=['ros2', 'control', 'load_controller', '--set-state', 'active', 'right_leg_controller'],
+        output='screen'
+    )
+
+    return LaunchDescription([
+        use_sim_time,
+        gazebo,
+        node_robot_state_publisher,
+        spawn_entity,
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=spawn_entity,
+                on_exit=[load_joint_state_broadcaster],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_joint_state_broadcaster,
+                on_exit=[load_neck_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_neck_controller,
+                on_exit=[load_left_arm_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_left_arm_controller,
+                on_exit=[load_right_arm_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_right_arm_controller,
+                on_exit=[load_left_leg_controller],
+            )
+        ),
+        RegisterEventHandler(
+            OnProcessExit(
+                target_action=load_left_leg_controller,
+                on_exit=[load_right_leg_controller],
+            )
+        ),
+    ])
+```
+
+### Step 5: Update package.xml
+Edit `~/ros2_workspace/src/my_robot_gazebo/package.xml`:
+```xml
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>my_robot_gazebo</name>
+  <version>0.0.0</version>
+  <description>Simple humanoid robot simulation in Gazebo</description>
+  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>gazebo_ros_pkgs</depend>
+  <depend>gazebo_plugins</depend>
+  <depend>robot_state_publisher</depend>
+  <depend>joint_state_publisher</depend>
+  <depend>controller_manager</depend>
+  <depend>ros2_control</depend>
+  <depend>ros2_controllers</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+
+  <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+```
+
+### Step 6: Update CMakeLists.txt
+Edit `~/ros2_workspace/src/my_robot_gazebo/CMakeLists.txt`:
+```cmake
+cmake_minimum_required(VERSION 3.8)
+project(my_robot_gazebo)
+
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# find dependencies
+find_package(ament_cmake REQUIRED)
+find_package(gazebo_ros_pkgs REQUIRED)
+find_package(gazebo_plugins REQUIRED)
+find_package(robot_state_publisher REQUIRED)
+find_package(joint_state_publisher REQUIRED)
+find_package(controller_manager REQUIRED)
+find_package(ros2_control REQUIRED)
+find_package(ros2_controllers REQUIRED)
+find_package(launch REQUIRED)
+find_package(launch_ros REQUIRED)
+
+# Install files
+install(DIRECTORY
+  launch
+  urdf
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()
+```
+
+### Step 7: Build the Package
+```bash
+cd ~/ros2_workspace
+colcon build --packages-select my_robot_gazebo
+```
+
+### Step 8: Source and Launch the Simulation
+```bash
+source install/setup.bash
+ros2 launch my_robot_gazebo robot_gazebo.launch.py
+```
+
+### Step 9: Control the Robot
+In a new terminal, after sourcing the workspace, you can send commands to the robot:
+```bash
+# Move the neck joint
+ros2 topic pub /neck_position_controller/commands std_msgs/msg/Float64MultiArray '{data: [0.5]}'
+
+# Move the left arm
+ros2 topic pub /left_arm_controller/commands std_msgs/msg/Float64MultiArray '{data: [0.5, 0.3]}'
+
+# Check available controllers
+ros2 control list_controllers
+```
+
+## Verification Steps
+1. Confirm the robot model appears in Gazebo simulation
+2. Verify that all joints are properly controlled by ROS 2
+3. Check that joint states are published correctly
+4. Test sending commands to move robot joints
+5. Verify that sensor data (if added) is published
+
+## Expected Outcomes
+- A URDF robot model successfully integrated with Gazebo
+- Proper ROS 2 Control configuration for simulated hardware
+- Ability to control robot joints through ROS 2 topics
+- Understanding of the simulation environment setup
+
+## Assessment Criteria
+- Robot spawns correctly in Gazebo
+- All controllers load successfully
+- Robot joints respond to commands
+- Joint states are properly published
+- Code follows ROS 2 best practices
+
+## Troubleshooting
+- Ensure all joint names match between URDF, control config, and launch file
+- Check that Gazebo plugins are properly loaded
+- Verify controller configuration file paths
+- Use `ros2 control list_controllers` to check controller status
+
+## Extension Exercise
+Add a camera sensor to the robot head and implement a simple computer vision task in simulation, such as object detection or tracking.

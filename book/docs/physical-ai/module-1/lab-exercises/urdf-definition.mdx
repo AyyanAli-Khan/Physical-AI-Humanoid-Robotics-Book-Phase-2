@@ -1,0 +1,782 @@
+---
+title: 'Lab: Defining a Simple Humanoid URDF'
+description: 'Hands-on lab for creating Unified Robot Description Format files for humanoid robots'
+sidebar_label: 'Lab: Defining a Simple Humanoid URDF'
+sidebar_position: 5
+---
+
+# Lab: Defining a Simple Humanoid URDF
+
+## Learning Objectives
+- Understand the structure and components of URDF files
+- Create a basic humanoid robot model with multiple joints
+- Define links, joints, and physical properties in URDF
+- Visualize the robot model in RViz2
+- Understand the relationship between URDF and robot kinematics
+
+## Prerequisites
+- ROS 2 installed with visualization tools
+- Basic understanding of robot kinematics
+- Completed previous ROS 2 labs
+
+## Lab Instructions
+
+### Step 1: Understanding URDF Structure
+URDF (Unified Robot Description Format) is an XML format used to describe robot models in ROS. A URDF file contains:
+- Links: Rigid parts of the robot (e.g., torso, limbs)
+- Joints: Connections between links (e.g., revolute, prismatic)
+- Visual: How the robot appears in visualization
+- Collision: Collision properties for physics simulation
+- Inertial: Mass and inertia properties for dynamics
+
+### Step 2: Create a Basic Humanoid Model
+Create a directory for URDF files:
+```bash
+mkdir -p ~/ros2_workspace/src/my_robot_description/urdf
+```
+
+Create `~/ros2_workspace/src/my_robot_description/urdf/simple_humanoid.urdf`:
+```xml
+<?xml version="1.0"?>
+<robot name="simple_humanoid">
+  <!-- Base Link -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0 0 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.2 0.1 0.1"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="1.0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <!-- Torso -->
+  <link name="torso">
+    <visual>
+      <geometry>
+        <box size="0.15 0.1 0.4"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.1 0.4"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="2.0"/>
+      <inertia ixx="0.05" ixy="0" ixz="0" iyy="0.05" iyz="0" izz="0.01"/>
+    </inertial>
+  </link>
+
+  <!-- Torso Joint -->
+  <joint name="base_to_torso" type="fixed">
+    <parent link="base_link"/>
+    <child link="torso"/>
+    <origin xyz="0 0 0.25"/>
+  </joint>
+
+  <!-- Head -->
+  <link name="head">
+    <visual>
+      <geometry>
+        <sphere radius="0.075"/>
+      </geometry>
+      <material name="white">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <sphere radius="0.075"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <!-- Head Joint -->
+  <joint name="neck_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="head"/>
+    <origin xyz="0 0 0.25"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <!-- Left Arm -->
+  <link name="left_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <link name="left_lower_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/>
+    </inertial>
+  </link>
+
+  <!-- Left Arm Joints -->
+  <joint name="left_shoulder_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="left_upper_arm"/>
+    <origin xyz="0.075 0 0.1" rpy="0 0 1.57"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <joint name="left_elbow_joint" type="revolute">
+    <parent link="left_upper_arm"/>
+    <child link="left_lower_arm"/>
+    <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Right Arm -->
+  <link name="right_upper_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.2" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.3"/>
+      <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+    </inertial>
+  </link>
+
+  <link name="right_lower_arm">
+    <visual>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+      <material name="green">
+        <color rgba="0 1 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.15" radius="0.02"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0005" ixy="0" ixz="0" iyy="0.0005" iyz="0" izz="0.0005"/>
+    </inertial>
+  </link>
+
+  <!-- Right Arm Joints -->
+  <joint name="right_shoulder_joint" type="revolute">
+    <parent link="torso"/>
+    <child link="right_upper_arm"/>
+    <origin xyz="-0.075 0 0.1" rpy="0 0 -1.57"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <joint name="right_elbow_joint" type="revolute">
+    <parent link="right_upper_arm"/>
+    <child link="right_lower_arm"/>
+    <origin xyz="0 0 -0.2" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Left Leg -->
+  <link name="left_upper_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="left_lower_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.0015" ixy="0" ixz="0" iyy="0.0015" iyz="0" izz="0.0015"/>
+    </inertial>
+  </link>
+
+  <link name="left_foot">
+    <visual>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <!-- Left Leg Joints -->
+  <joint name="left_hip_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="left_upper_leg"/>
+    <origin xyz="0.05 -0.05 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="left_knee_joint" type="revolute">
+    <parent link="left_upper_leg"/>
+    <child link="left_lower_leg"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="left_ankle_joint" type="revolute">
+    <parent link="left_lower_leg"/>
+    <child link="left_foot"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="50" velocity="1"/>
+  </joint>
+
+  <!-- Right Leg -->
+  <link name="right_upper_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.03"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.5"/>
+      <inertia ixx="0.002" ixy="0" ixz="0" iyy="0.002" iyz="0" izz="0.002"/>
+    </inertial>
+  </link>
+
+  <link name="right_lower_leg">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+      <material name="purple">
+        <color rgba="0.5 0 0.5 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder length="0.25" radius="0.025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.4"/>
+      <inertia ixx="0.0015" ixy="0" ixz="0" iyy="0.0015" iyz="0" izz="0.0015"/>
+    </inertial>
+  </link>
+
+  <link name="right_foot">
+    <visual>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0 0 0 1"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="0.15 0.08 0.05"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.2"/>
+      <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+    </inertial>
+  </link>
+
+  <!-- Right Leg Joints -->
+  <joint name="right_hip_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="right_upper_leg"/>
+    <origin xyz="-0.05 -0.05 -0.05" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.57" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="right_knee_joint" type="revolute">
+    <parent link="right_upper_leg"/>
+    <child link="right_lower_leg"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="1.57" effort="100" velocity="1"/>
+  </joint>
+
+  <joint name="right_ankle_joint" type="revolute">
+    <parent link="right_lower_leg"/>
+    <child link="right_foot"/>
+    <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.5" upper="0.5" effort="50" velocity="1"/>
+  </joint>
+</robot>
+```
+
+### Step 3: Create a Package for Robot Description
+```bash
+cd ~/ros2_workspace/src
+ros2 pkg create --build-type ament_cmake my_robot_description
+```
+
+### Step 4: Update package.xml
+Edit `~/ros2_workspace/src/my_robot_description/package.xml`:
+```xml
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>my_robot_description</name>
+  <version>0.0.0</version>
+  <description>Simple humanoid robot description</description>
+  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+```
+
+### Step 5: Create CMakeLists.txt
+Edit `~/ros2_workspace/src/my_robot_description/CMakeLists.txt`:
+```cmake
+cmake_minimum_required(VERSION 3.8)
+project(my_robot_description)
+
+find_package(ament_cmake REQUIRED)
+
+# Install URDF files
+install(DIRECTORY urdf/
+  DESTINATION share/${PROJECT_NAME}/urdf
+)
+
+# Install launch files
+install(DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
+# Install config files
+install(DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+ament_package()
+```
+
+### Step 6: Create a Launch File
+Create `~/ros2_workspace/src/my_robot_description/launch/display_robot.launch.py`:
+```python
+from launch import LaunchDescription
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.actions import DeclareLaunchArgument
+from launch_ros.actions import Node
+from ament_index_python.packages import get_package_share_directory
+
+
+def generate_launch_description():
+    # Declare launch arguments
+    urdf_model_arg = DeclareLaunchArgument(
+        'urdf_model',
+        default_value=PathJoinSubstitution([
+            get_package_share_directory('my_robot_description'),
+            'urdf',
+            'simple_humanoid.urdf'
+        ]),
+        description='URDF file to load'
+    )
+
+    # Load URDF from file
+    robot_description = PathJoinSubstitution([
+        get_package_share_directory('my_robot_description'),
+        'urdf',
+        'simple_humanoid.urdf'
+    ])
+
+    # Robot State Publisher node
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        parameters=[{
+            'robot_description': PathJoinSubstitution([robot_description])
+        }],
+        output='screen'
+    )
+
+    # Joint State Publisher GUI node
+    joint_state_publisher_gui = Node(
+        package='joint_state_publisher_gui',
+        executable='joint_state_publisher_gui',
+        name='joint_state_publisher_gui',
+        output='screen'
+    )
+
+    # RViz2 node
+    rviz2 = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d', PathJoinSubstitution([
+            get_package_share_directory('my_robot_description'),
+            'config',
+            'robot_display.rviz'
+        ])],
+        output='screen'
+    )
+
+    return LaunchDescription([
+        urdf_model_arg,
+        robot_state_publisher,
+        joint_state_publisher_gui,
+        rviz2
+    ])
+```
+
+### Step 7: Create RViz Configuration
+Create the config directory and RViz config file:
+```bash
+mkdir -p ~/ros2_workspace/src/my_robot_description/config
+```
+
+Create `~/ros2_workspace/src/my_robot_description/config/robot_display.rviz`:
+```yaml
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Status1
+        - /RobotModel1
+      Splitter Ratio: 0.5
+    Tree Height: 617
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Line Width: 0.029999999329447746
+        Value: Lines
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz_default_plugins/RobotModel
+      Collision Enabled: false
+      Description File: ""
+      Description Source: Topic
+      Description Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot_description
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expand Joint Details: false
+        Expand Link Details: false
+        Expand Tree: false
+        Link Tree Style: Links in Alphabetic Order
+        base_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        head:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_ankle_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_foot:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_hip_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_knee_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_lower_arm:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_shoulder_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        left_upper_arm:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        left_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_ankle_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_foot:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_hip_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_knee_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_lower_arm:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_lower_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_shoulder_joint:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        right_upper_arm:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        right_upper_leg:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        torso:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+      Name: RobotModel
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: base_link
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Transformation: {}
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1.5
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.5
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.5
+    Saved: ~
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 846
+  Width: 1200
+```
+
+### Step 8: Build the Package
+```bash
+cd ~/ros2_workspace
+colcon build --packages-select my_robot_description
+```
+
+### Step 9: Source and Launch the Robot Model
+```bash
+source install/setup.bash
+ros2 launch my_robot_description display_robot.launch.py
+```
+
+## Verification Steps
+1. Confirm the robot model appears in RViz2
+2. Use the joint state publisher GUI to move joints
+3. Check that all links and joints are properly connected
+4. Verify that the robot has proper physical properties
+
+## Expected Outcomes
+- A complete humanoid robot model in URDF format
+- Understanding of URDF structure and components
+- Ability to visualize and manipulate the robot model
+- Knowledge of robot kinematics and joint constraints
+
+## Assessment Criteria
+- URDF file is properly structured and valid
+- Robot model displays correctly in RViz2
+- All joints move as expected
+- Physical properties are reasonable
+- Code follows ROS 2 best practices
+
+## Troubleshooting
+- Ensure all joint limits and origins are properly defined
+- Check that mass and inertia values are positive
+- Verify that all links are properly connected
+- Use `check_urdf` tool to validate URDF: `check_urdf ~/path/to/urdf/file.urdf`
+
+## Extension Exercise
+Add sensors to the humanoid model (e.g., IMU, cameras) and update the URDF to include sensor links and joints.

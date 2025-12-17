@@ -1,0 +1,221 @@
+---
+title: 'Lab: Your First ROS 2 Node'
+description: 'Hands-on lab for creating your first ROS 2 node with rclpy'
+sidebar_label: 'Lab: Your First ROS 2 Node'
+sidebar_position: 3
+---
+
+# Lab: Your First ROS 2 Node
+
+## Learning Objectives
+- Create a simple ROS 2 publisher node
+- Create a simple ROS 2 subscriber node
+- Test the communication between nodes
+- Understand the basic structure of a ROS 2 Python package
+- Use ROS 2 command-line tools to monitor communication
+
+## Prerequisites
+- ROS 2 installed and sourced (Humble Hawksbill or later recommended)
+- Basic Python programming knowledge
+- Understanding of ROS 2 concepts (nodes, topics, publishers, subscribers)
+
+## Lab Instructions
+
+### Step 1: Set up the Workspace
+First, create a workspace for your ROS 2 packages:
+```bash
+mkdir -p ~/ros2_workspace/src
+cd ~/ros2_workspace
+```
+
+### Step 2: Create a Package
+Use the `ros2 pkg create` command to create a new package:
+```bash
+cd src
+ros2 pkg create --build-type ament_python py_publisher_subscriber
+```
+
+### Step 3: Navigate to Package Directory
+```bash
+cd py_publisher_subscriber
+```
+
+### Step 4: Create Publisher Node
+Create a new Python file for the publisher:
+```bash
+mkdir -p py_publisher_subscriber
+touch py_publisher_subscriber/publisher_member_function.py
+```
+
+Add the following code to `py_publisher_subscriber/publisher_member_function.py`:
+
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class MinimalPublisher(Node):
+
+    def __init__(self):
+        super().__init__('minimal_publisher')
+        self.publisher_ = self.create_publisher(String, 'topic', 10)
+        timer_period = 0.5  # seconds
+        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.i = 0
+
+    def timer_callback(self):
+        msg = String()
+        msg.data = 'Hello World: %d' % self.i
+        self.publisher_.publish(msg)
+        self.get_logger().info('Publishing: "%s"' % msg.data)
+        self.i += 1
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    minimal_publisher = MinimalPublisher()
+
+    rclpy.spin(minimal_publisher)
+
+    # Destroy the node explicitly
+    minimal_publisher.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Step 5: Create Subscriber Node
+Create a new Python file for the subscriber:
+```bash
+touch py_publisher_subscriber/subscriber_member_function.py
+```
+
+Add the following code to `py_publisher_subscriber/subscriber_member_function.py`:
+
+```python
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class MinimalSubscriber(Node):
+
+    def __init__(self):
+        super().__init__('minimal_subscriber')
+        self.subscription = self.create_subscription(
+            String,
+            'topic',
+            self.listener_callback,
+            10)
+        self.subscription  # prevent unused variable warning
+
+    def listener_callback(self, msg):
+        self.get_logger().info('I heard: "%s"' % msg.data)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+
+    minimal_subscriber = MinimalSubscriber()
+
+    rclpy.spin(minimal_subscriber)
+
+    # Destroy the node explicitly
+    minimal_subscriber.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+### Step 6: Update setup.py
+Edit the `setup.py` file to include the entry points for your nodes:
+
+```python
+from setuptools import find_packages
+from setuptools import setup
+
+package_name = 'py_publisher_subscriber'
+
+setup(
+    name=package_name,
+    version='0.0.0',
+    packages=find_packages(exclude=['test']),
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Your Name',
+    maintainer_email='your.email@example.com',
+    description='Python publisher/subscriber example',
+    license='Apache License 2.0',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'talker = py_publisher_subscriber.publisher_member_function:main',
+            'listener = py_publisher_subscriber.subscriber_member_function:main',
+        ],
+    },
+)
+```
+
+### Step 7: Build the Package
+Go back to the workspace root and build the package:
+```bash
+cd ~/ros2_workspace
+colcon build --packages-select py_publisher_subscriber
+```
+
+### Step 8: Source the Workspace
+```bash
+source install/setup.bash
+```
+
+### Step 9: Run the Publisher Node
+Open a new terminal, navigate to your workspace, source it, and run:
+```bash
+ros2 run py_publisher_subscriber talker
+```
+
+### Step 10: Run the Subscriber Node
+In another terminal, run:
+```bash
+ros2 run py_publisher_subscriber listener
+```
+
+You should see the publisher sending messages and the subscriber receiving them.
+
+## Verification Steps
+1. Confirm that the publisher node is publishing messages with `ros2 topic echo /topic std_msgs/msg/String`
+2. Use `ros2 node list` to see active nodes
+3. Use `ros2 topic list` to see active topics
+4. Use `ros2 topic info /topic` to see publisher/subscriber information
+
+## Expected Outcomes
+- A functional publisher and subscriber pair
+- Understanding of ROS 2 node communication
+- Familiarity with ROS 2 command-line tools
+- Knowledge of basic package structure
+
+## Assessment Criteria
+- Nodes communicate successfully (publisher sends, subscriber receives)
+- Code follows ROS 2 Python best practices
+- Proper error handling implemented
+- Understanding of the publish/subscribe pattern
+
+## Troubleshooting
+- If nodes don't communicate, ensure both terminals have sourced the workspace
+- Check that topic names match exactly
+- Verify that the package built successfully
+- Confirm ROS 2 environment is properly sourced
+
+## Extension Exercise
+Modify the publisher to send different message types (e.g., include timestamp or counter) and update the subscriber to process the additional information.
