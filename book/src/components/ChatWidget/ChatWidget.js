@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import API_CONFIG from '@site/src/config/apiConfig';
 import "./ChatWidget.css";
 import Link from "@docusaurus/Link";
 
