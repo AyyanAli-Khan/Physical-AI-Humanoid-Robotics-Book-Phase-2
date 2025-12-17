@@ -54,7 +54,7 @@ const ChatWidget = () => {
     try {
       // Call your backend API
       const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.CHAT_ENDPOINT}`,
+        `https://ayyan11-rag-chatbot.hf.space/api/v1/chat/message`,
         {
           method: "POST",
           headers: {
@@ -63,7 +63,7 @@ const ChatWidget = () => {
           body: JSON.stringify({
             message: inputValue,
             session_id: sessionId || undefined,
-            model: API_CONFIG.DEFAULT_MODEL,
+            thread_id: "",
           }),
         }
       );
